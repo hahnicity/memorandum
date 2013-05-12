@@ -10,6 +10,14 @@ from memorandum.defaults import lang, url_base
 from memorandum.exceptions import HTTPStatusCodeError
 
 
+def filter_for_values(data):
+    """
+    Given a set of data this will take all the daily view statistics, strip
+    the dates and then return a large list of only page views
+    """
+    return data["daily_views"].values()
+
+
 def filter_zeros(data):
     """
     Removes all page view statistics with values of 0. We assume there was a

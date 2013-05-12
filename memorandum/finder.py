@@ -6,26 +6,28 @@ Finds page view statistics for a given wikipedia page
 """
 from datetime import datetime
 
+from scipy.stats.mstats import mquantiles
+
 from memorandum.constants import get_workweek
 from memorandum.utils import (
-    filter_zeros, 
+    filter_for_values,
+    filter_zeros,
     get_day_of_week,
     get_monthly_data
 )
 
 
-def count_page_views_for_month(month, wiki_page, year=None):
+def find_highest_outliers(data, prob=[.9]):
     """
-    Get the aggregate number of page views for a wiki page in a given month
+    Given a dict of data find the high outliers in this data
     """
-    year = year or datetime.now().year
-    formatted_date = "{}{}".format(year, month)
-    aggregate_views = 0
-    data = get_monthly_data(formatted_date, wiki_page)
-    for views in data["daily_views"].itervalues():
-        aggregate_views += views
-    return aggregate_views
-
+    all_values = filter_for_values(data)
+    quantile = mquantiles(sorted(all_values), prob=prob)[-1]
+    return [
+        (date, val) for date, val in data["daily_views"].iteritems() 
+        if val > quantile
+    ]
+    
 
 def get_page_views_for_year(wiki_page, year=None):
     """
