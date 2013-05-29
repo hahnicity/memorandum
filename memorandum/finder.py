@@ -6,30 +6,15 @@ Finds page view statistics for a given wikipedia page
 """
 from datetime import datetime
 
-from scipy.stats.mstats import mquantiles
+import requests
+import ujson
 
-from memorandum.constants import get_workweek
-from memorandum.utils import (
-    filter_for_values,
-    filter_zeros,
-    get_day_of_week,
-    get_monthly_data
-)
+from memorandum.defaults import url_base, lang
+from memorandum.exceptions import HTTPStatusCodeError
+from memorandum.utils import filter_zeros
 
 
-def find_highest_outliers(data, prob=[.9]):
-    """
-    Given a dict of data find the high outliers in this data
-    """
-    all_values = filter_for_values(data)
-    quantile = mquantiles(sorted(all_values), prob=prob)[-1]
-    return [
-        (date, val) for date, val in data["daily_views"].iteritems() 
-        if val > quantile
-    ]
-    
-
-def get_page_views_for_year(wiki_page, year=None):
+def get_yearly_data(wiki_page, year=None):
     """
     Get dictionary of page views for a wiki page in a given year
     """
@@ -50,28 +35,21 @@ def get_page_views_for_year(wiki_page, year=None):
     return yearly_data
 
 
-def group_by_week(data):
+def get_monthly_data(date_string, wiki_page):
     """
-    Group daily data by week (SMTWTFS)
+    Get a json blob of the monthly page view data for a given wiki page
+
+    date_string should be given as a combination of a nonspace separated
+    year and month
+    eg: 201206
+
+    wiki_page should be given as the desired wikipedia page eg: Apple_Inc.
+    which was taken from the suffix of http://en.wikipedia.org/wiki/Apple_inc
     """
-    week_separated_data = []
-    week = []
-    workweek = get_workweek()
-    sorted_data = sorted(
-        data["daily_views"].items(), key=lambda (day, val): day
+    response = requests.get("{}/json/{}/{}/{}".format(
+        url_base, lang, date_string, wiki_page)
     )
-    initial_day = get_day_of_week(sorted_data[0][0])
-    previous_day_of_workweek = workweek[initial_day]
-    week.append(sorted_data[0])
-
-    for data_point in sorted_data[1:]:
-        day_of_workweek = workweek[get_day_of_week(data_point[0])]
-        if day_of_workweek > previous_day_of_workweek:
-            week.append(data_point)
-        else:
-            week_separated_data.append(week)
-            week = []
-            week.append(data_point)
-        previous_day_of_workweek = day_of_workweek
-
-    return week_separated_data
+    if response.status_code != 200:
+        raise HTTPStatusCodeError(response)
+    else:
+        return ujson.loads(response.text)

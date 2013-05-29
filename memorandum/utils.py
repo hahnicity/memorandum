@@ -3,11 +3,22 @@ memorandum.utils
 ~~~~~~~~~~~~~~~~
 """
 from datetime import datetime
-import requests
-import ujson
 
-from memorandum.defaults import lang, url_base
-from memorandum.exceptions import HTTPStatusCodeError
+
+def convert_wiki_date_to_datetime(date_string, **kwargs):
+    """
+    Converts a date formatted as "year-month-day" to a datetime object
+    """
+    date_split = date_string.split("-")
+    now = datetime.now()
+    return now.replace(
+        year=int(date_split[0]), 
+        month=int(date_split[1]), 
+        day=int(date_split[2]),
+        hour=kwargs.get("hour", now.hour),
+        minute=kwargs.get("minute", now.minute),
+        second=kwargs.get("second", now.second)
+    )
 
 
 def filter_for_values(data):
@@ -34,30 +45,5 @@ def get_day_of_week(date_string):
     """
     Given a date formatted as "year-month-day" get the name of the day
     """
-    date_split = date_string.split("-")
-    datetime_obj = datetime.now().replace(
-        year=int(date_split[0]), 
-        month=int(date_split[1]), 
-        day=int(date_split[2])
-    )
+    datetime_obj = convert_wiki_date_to_datetime(date_string)
     return datetime_obj.strftime("%A")
-
-
-def get_monthly_data(date_string, wiki_page):
-    """
-    Get a json blob of the monthly page view data for a given wiki page
-
-    date_string should be given as a combination of a nonspace separated
-    year and month
-    eg: 201206
-
-    wiki_page should be given as the desired wikipedia page eg: Apple_Inc.
-    which was taken from the suffix of http://en.wikipedia.org/wiki/Apple_inc
-    """
-    response = requests.get("{}/json/{}/{}/{}".format(
-        url_base, lang, date_string, wiki_page)
-    )
-    if response.status_code != 200:
-        raise HTTPStatusCodeError(response)
-    else:
-        return ujson.loads(response.text)
